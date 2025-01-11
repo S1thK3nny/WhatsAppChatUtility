@@ -43,17 +43,24 @@ public class ChatAnalysis {
 
                 // If the line starts with a date, it's a new message
                 if (parts[0].matches("^\\d{2}\\.\\d{2}\\.\\d{2}, \\d{2}:\\d{2}.*")) {
-                    String[] senderAndMessage = parts[1].split(": ", 2); // Only split the first colon to have <sender>: <message>
+                    int dashIndex = line.indexOf(" - ");
+                    if (dashIndex == -1) continue;
+
+                    String dateTimePart = line.substring(0, dashIndex).trim();
+                    String messagePart = line.substring(dashIndex + 3).trim();
+
+                    String[] senderAndMessage = messagePart.split(": ", 2); // Only split the first colon
 
                     if (senderAndMessage.length < 2 || senderAndMessage[1].equals("<Medien ausgeschlossen>")) {
-                        // If the message doesn't contain a colon, it's likely a system message or an image
+                        // Skip invalid messages or media placeholders
                         continue;
                     }
 
-                    // Save the last sender and their message
                     lastSender = senderAndMessage[0].trim();
                     messages.putIfAbsent(lastSender, new ArrayList<>());
-                    messages.get(lastSender).add(new Message(lastSender, senderAndMessage[1], parseDateTime(parts[0])));
+                    messages.get(lastSender).add(
+                            new Message(lastSender, senderAndMessage[1], parseDateTime(dateTimePart))
+                    );
                 }
                 else {
                     if (lastSender != null) {
