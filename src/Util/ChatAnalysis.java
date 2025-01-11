@@ -5,8 +5,10 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import DataStructures.Message;
 
@@ -350,19 +352,52 @@ public class ChatAnalysis {
                 .append("----------------\n")
                 .append("Total Messages: ").append(getMessagesCount()).append("\n");
 
-        // Get all participants and sort them by their message count in descending order
-        List<String> sortedParticipants = new ArrayList<>(getParticipants());
-        sortedParticipants.sort((p1, p2) ->
-                Integer.compare(getMessagesByParticipant(p2).size(), getMessagesByParticipant(p1).size()));
+        // Precompute messages per participant to avoid redundant calls
+        Map<String, List<Message>> messagesByParticipant = getParticipants().stream()
+                .collect(Collectors.toMap(
+                        participant -> participant,
+                        this::getMessagesByParticipant
+                ));
 
-        sb.append("Participants (sorted by message count): ").append(
-                String.join(", ", sortedParticipants)).append("\n");
+        // Sort participants by message count in descending order
+        List<Map.Entry<String, List<Message>>> sortedParticipants = messagesByParticipant.entrySet()
+                .stream()
+                .sorted((e1, e2) -> Integer.compare(e2.getValue().size(), e1.getValue().size()))
+                .toList();
+
+        // Extract sorted participant names
+        String sortedParticipantNames = sortedParticipants.stream()
+                .map(Map.Entry::getKey)
+                .collect(Collectors.joining(", "));
+        sb.append("Participants (sorted by message count): ").append(sortedParticipantNames).append("\n");
+
+        // Collect all messages into a single stream for processing
+        Stream<Message> allMessages = chat.values().stream().flatMap(List::stream);
+
+        // Find the earliest and latest messages
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yy, HH:mm");
+
+        Optional<Message> earliestMessage = allMessages.min(Comparator.comparing(Message::getTimestamp));
+        // Since streams cannot be reused, recreate it
+        Stream<Message> allMessagesForLatest = chat.values().stream().flatMap(List::stream);
+        Optional<Message> latestMessage = allMessagesForLatest.max(Comparator.comparing(Message::getTimestamp));
+
+        sb.append("Earliest Message: ")
+                .append(earliestMessage
+                        .map(msg -> msg.getTimestamp().format(formatter))
+                        .orElse("N/A"))
+                .append("\n");
+
+        sb.append("Latest Message: ")
+                .append(latestMessage
+                        .map(msg -> msg.getTimestamp().format(formatter))
+                        .orElse("N/A"))
+                .append("\n");
 
         sb.append("Messages per Participant:\n");
-
-        sortedParticipants.forEach(participant ->
-                sb.append("\t- ").append(participant).append(": ")
-                        .append(getMessagesByParticipant(participant).size()).append("\n")
+        sortedParticipants.forEach(entry ->
+                sb.append("\t- ").append(entry.getKey()).append(": ")
+                        .append(entry.getValue().size()).append("\n")
         );
 
         return sb.toString();
