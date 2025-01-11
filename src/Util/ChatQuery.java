@@ -2,7 +2,6 @@ package Util;
 
 import DataStructures.Message;
 import static Util.Functions.*;
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -60,7 +59,45 @@ public class ChatQuery {
     public Map<String, Long> getWordFrequency() {
         return messages.stream()
                 .flatMap(m -> extractWords(m.getContent()).stream())
-                .collect(Collectors.groupingBy(word -> word, Collectors.counting()));
+                .collect(Collectors.groupingBy(word -> word, Collectors.counting()))
+                .entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue(Comparator.reverseOrder()))
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue,
+                        (e1, e2) -> e1, // In case of key collision, keep the existing entry
+                        LinkedHashMap::new // Preserve the order
+                ));
+    }
+
+    public Map<String, Long> getWordFrequency(int minFrequency) {
+        if (minFrequency < 1) {
+            throw new IllegalArgumentException("Minimum frequency must be at least 1");
+        }
+
+        return getWordFrequency().entrySet().stream()
+                .filter(entry -> entry.getValue() >= minFrequency)
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue,
+                        (e1, e2) -> e1, // In case of key collision, keep the existing entry
+                        LinkedHashMap::new // Preserve the order
+                ));
+    }
+
+    public Map<String, Long> getTopNWordFrequency(int n) {
+        if (n < 1) {
+            throw new IllegalArgumentException("N must be at least 1");
+        }
+
+        return getWordFrequency().entrySet().stream()
+                .limit(n)
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue,
+                        (e1, e2) -> e1, // In case of key collision, keep the existing entry
+                        LinkedHashMap::new // Preserve the order
+                ));
     }
 
     // Get most active user
