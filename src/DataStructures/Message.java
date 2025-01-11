@@ -3,7 +3,7 @@ package DataStructures;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-public class Message {
+public class Message implements Comparable<Message> {
     private String sender;
     private String content;
     private LocalDateTime timestamp;
@@ -30,5 +30,10 @@ public class Message {
     public String toString() {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yy, HH:mm");
         return timestamp.format(formatter) + " - " + sender + ": " + content;
+    }
+
+    @Override
+    public int compareTo(Message other) {
+        return this.timestamp.compareTo(other.timestamp);
     }
 }

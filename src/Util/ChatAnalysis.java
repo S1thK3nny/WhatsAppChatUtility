@@ -122,17 +122,17 @@ public class ChatAnalysis {
         return frequency;
     }
 
-    public ArrayList<Message> getSentenceByWord(String word) {
+    public ArrayList<Message> getMessagesByWord(String word) {
         if (word.isEmpty()) throw new IllegalArgumentException("Word is empty");
         if (chat.isEmpty()) throw new IllegalArgumentException("Chat is empty");
 
         return chat.keySet().stream()
-                .map(participant -> getSentenceByWord(word, participant))
+                .map(participant -> getMessagesByWord(word, participant))
                 .flatMap(ArrayList::stream)
                 .collect(Collectors.toCollection(ArrayList::new));
     }
 
-    public ArrayList<Message> getSentenceByWord(String word, String participant) {
+    public ArrayList<Message> getMessagesByWord(String word, String participant) {
         if (word == null || word.isEmpty()) throw new IllegalArgumentException("Word is empty or null");
         if (participant == null || participant.isEmpty()) throw new IllegalArgumentException("Participant is empty or null");
         if (chat == null || chat.isEmpty()) throw new IllegalArgumentException("Chat is empty or not initialized");
@@ -156,22 +156,22 @@ public class ChatAnalysis {
     }
 
     // Broken method
-    public ArrayList<Message> getSentenceByExactWord(String word) {
+    public ArrayList<Message> getMessagesByExactWord(String word) {
         if (word.isEmpty()) throw new IllegalArgumentException("Word is empty");
         if (chat.isEmpty()) throw new IllegalArgumentException("Chat is empty");
 
         return getParticipants().stream()
-                .map(participant -> getSentenceByExactWord(word, participant))
+                .map(participant -> getMessagesByExactWord(word, participant))
                 .flatMap(ArrayList::stream)
                 .collect(Collectors.toCollection(ArrayList::new));
     }
 
     // Broken method
-    public ArrayList<Message> getSentenceByExactWord(String word, String participant) {
+    public ArrayList<Message> getMessagesByExactWord(String word, String participant) {
         if (word.isEmpty()) throw new IllegalArgumentException("Word is empty");
         if (chat.isEmpty()) throw new IllegalArgumentException("Chat is empty");
 
-        return getSentenceByWord(word, participant).stream()
+        return getMessagesByWord(word, participant).stream()
                 .filter(message -> Objects.equals(extractWords(message.getContent()), word.toLowerCase()))
                 .collect(Collectors.toCollection(ArrayList::new));
     }
@@ -198,6 +198,19 @@ public class ChatAnalysis {
 
         return new ArrayList<>(chat.get(participant));
     }
+
+    public ArrayList<Message> getMessagesByTimeframe(String start, String end) {
+        if (start == null || end == null) throw new IllegalArgumentException("Start or end date is null");
+        if (!isValidTimeFormat(start) || !isValidTimeFormat(end)) throw new IllegalArgumentException("Invalid date format");
+        if (chat.isEmpty()) throw new IllegalArgumentException("Chat is empty");
+
+        return chat.values().stream()
+                .flatMap(List::stream)
+                .filter(message -> message.getTimestamp().isAfter(parseDateTime(start)) && message.getTimestamp().isBefore(parseDateTime(end)))
+                .sorted(Comparator.comparing(Message::getTimestamp)) // Sort by timestamp
+                .collect(Collectors.toCollection(ArrayList::new));
+    }
+
 
     public String getMostActiveUser() {
         if (chat.isEmpty()) throw new IllegalArgumentException("Chat is empty");
@@ -269,6 +282,16 @@ public class ChatAnalysis {
             words.add(matcher.group());
         }
         return words;
+    }
+
+    private boolean isValidTimeFormat(String dateTime) {
+        try {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yy, HH:mm");
+            LocalDateTime.parse(dateTime, formatter);
+            return true;
+        } catch (DateTimeParseException e) {
+            return false;
+        }
     }
 
     private LocalDateTime parseDateTime(String dateTimeStr) {
