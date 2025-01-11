@@ -3,15 +3,12 @@ package Util;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import DataStructures.Message;
+
+import static Util.Functions.*;
 
 public class ChatAnalysis {
     private final HashMap<String, List<Message>> chat;
@@ -271,49 +268,23 @@ public class ChatAnalysis {
     //endregion
 
     //================================================================================
-    // Utility functions
+    // Query Methods for Function Chaining
     //================================================================================
-    // region Utility functions
+    // region Query Methods
 
-    private List<String> extractWords(String text) {
-        List<String> words = new ArrayList<>();
-        Matcher matcher = Pattern.compile("\\b\\p{L}+'?\\p{L}*\\b").matcher(text.toLowerCase(Locale.ROOT));
-        while (matcher.find()) {
-            words.add(matcher.group());
-        }
-        return words;
+    /**
+     * Initiates a new ChatQuery with all messages.
+     * @return a new ChatQuery instance containing all messages.
+     */
+    public ChatQuery query() {
+        // Flatten all messages into a single collection
+        Collection<Message> allMessages = chat.values().stream()
+                .flatMap(List::stream)
+                .collect(Collectors.toList());
+        return new ChatQuery(allMessages);
     }
 
-    private boolean isValidTimeFormat(String dateTime) {
-        try {
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yy, HH:mm");
-            LocalDateTime.parse(dateTime, formatter);
-            return true;
-        } catch (DateTimeParseException e) {
-            return false;
-        }
-    }
-
-    private LocalDateTime parseDateTime(String dateTimeStr) {
-        // Remove any whitespace and split by comma
-        String[] parts = dateTimeStr.trim().split(",");
-        if (parts.length != 2) {
-            throw new IllegalArgumentException("Invalid date-time format. Expected format: DD.MM.YY, HH:mm");
-        }
-
-        // Combine date and time parts with proper formatting
-        String dateTime = parts[0].trim() + " " + parts[1].trim();
-
-        // Create formatter for the specific pattern
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yy HH:mm");
-
-        try {
-            // Parse the string to LocalDateTime
-            return LocalDateTime.parse(dateTime, formatter);
-        } catch (DateTimeParseException e) {
-            throw new IllegalArgumentException("Failed to parse date-time: " + dateTimeStr, e);
-        }
-    }
+    //endregion
 
     @Override
     public String toString() {
@@ -339,5 +310,4 @@ public class ChatAnalysis {
 
         return sb.toString();
     }
-    //endregion
 }
