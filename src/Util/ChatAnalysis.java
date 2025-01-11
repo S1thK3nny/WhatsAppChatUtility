@@ -14,15 +14,18 @@ import java.util.stream.Collectors;
 import DataStructures.Message;
 
 public class ChatAnalysis {
-    private final ArrayList<Message> chat;
-    // private final HashMap<String, List<Message>> chat;
+    // private final ArrayList<Message> chat;
+    private final HashMap<String, List<Message>> chat;
 
     public ChatAnalysis(String path) {
         this.chat = readChat(path);
     }
 
-    public ArrayList<Message> readChat(String path) {
-        ArrayList<Message> messages = new ArrayList<>();
+    public HashMap<String, List<Message>> readChat(String path) {
+        if (path == null || path.trim().isEmpty()) throw new IllegalArgumentException("Path is empty or null");
+
+        HashMap<String, List<Message>> messages = new HashMap<>();
+
         try {
             BufferedReader reader = Files.newBufferedReader(Paths.get(path).toAbsolutePath());
             String line;
@@ -38,17 +41,19 @@ public class ChatAnalysis {
                         continue;
                     }
 
+                    // Save the last sender and their message
                     lastSender = senderAndMessage[0].trim();
-                    messages.add(new Message(lastSender, senderAndMessage[1], parseDateTime(parts[0])));
+                    messages.putIfAbsent(lastSender, new ArrayList<>());
+                    messages.get(lastSender).add(new Message(lastSender, senderAndMessage[1], parseDateTime(parts[0])));
                 }
                 else {
                     if (lastSender != null) {
                         // If the last message was sent by the same person, append the current line to the last message
-                        messages.set(
-                                messages.size() - 1,
+                        messages.get(lastSender).set(
+                                messages.get(lastSender).size() - 1,
                                 new Message(lastSender,
-                                        messages.getLast().getContent() + "\n" + line,
-                                        messages.getLast().getTimestamp())
+                                        messages.get(lastSender).getLast().getContent() + "\n" + line,
+                                        messages.get(lastSender).getLast().getTimestamp())
                         );
                     }
                 }
@@ -64,21 +69,29 @@ public class ChatAnalysis {
     public void wordFrequency(int amount) {
         if (amount < 1) throw new IllegalArgumentException("Amount must be greater than 0");
         if (chat == null || chat.isEmpty()) throw new IllegalArgumentException("Chat is empty or not initialized");
-        if (amount > chat.size()) throw new IllegalArgumentException("Amount is greater than the number of messages");
+        if (amount > getMessagesCount()) throw new IllegalArgumentException("Amount is greater than the number of messages");
 
         // Map: Participant -> (Word -> Frequency)
         Map<String, Map<String, Integer>> wordFrequencyMap = new HashMap<>();
 
-        for (Message message : chat) {
-            String sender = message.getSender();
-            if (sender == null || sender.trim().isEmpty()) continue; // Skip messages with no sender
+        for (Map.Entry<String, List<Message>> entry : chat.entrySet()) {
+            String sender = entry.getKey();
+            List<Message> messages = entry.getValue();
 
-            // Initialize the map for the sender if not present
-            wordFrequencyMap.computeIfAbsent(sender, k -> new HashMap<>());
+            if (sender == null || sender.trim().isEmpty() || messages == null) continue; // Skip invalid entries
 
-            List<String> words = extractWords(message.getContent());
-            for (String word : words) {
-                wordFrequencyMap.get(sender).merge(word, 1, Integer::sum);
+            // Initialize the word frequency map for the sender
+            Map<String, Integer> frequencyMap = wordFrequencyMap.computeIfAbsent(sender, k -> new HashMap<>());
+
+            // Process each message from the sender
+            for (Message message : messages) {
+                if (message == null || message.getContent() == null) continue;
+
+                // Extract words and update frequency
+                List<String> words = extractWords(message.getContent());
+                for (String word : words) {
+                    frequencyMap.merge(word, 1, Integer::sum);
+                }
             }
         }
 
@@ -98,11 +111,8 @@ public class ChatAnalysis {
         if (word.isEmpty()) throw new IllegalArgumentException("Wort ist leer");
 
         // Create a map of participants and their word frequency
-        return getParticipants().stream()
-                .collect(Collectors.toMap(
-                        participant -> participant,
-                        participant -> getWordFrequency(word, participant)
-                ));
+        return chat.keySet().stream()
+                .collect(Collectors.toMap(participant -> participant, participant -> getWordFrequency(word, participant)));
     }
 
     // Fix Umlaute
@@ -114,21 +124,28 @@ public class ChatAnalysis {
         // Normalize the search word
         String cleanSearchWord = wordToSearchFor.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_äöüß]", "");
 
-        if (getParticipants().stream()
-                .noneMatch(p -> p.equalsIgnoreCase(participant))) {
+        // Check if the participant exists
+        if (!chat.containsKey(participant)) {
             System.out.println("Participant \"" + participant + "\" not found");
             return 0;
         }
 
         int frequency = 0;
-        for (Message message : chat) {
-            if (!message.getSender().equalsIgnoreCase(participant)) continue;
 
-            List<String> words = extractWords(message.getContent());
-            for (String word : words) {
-                if (word.equals(cleanSearchWord)) frequency++;
+        // Retrieve the participant's messages
+        List<Message> messages = chat.get(participant);
+
+        if (messages != null) {
+            for (Message message : messages) {
+                List<String> words = extractWords(message.getContent());
+                for (String word : words) {
+                    if (word.equalsIgnoreCase(cleanSearchWord)) {
+                        frequency++;
+                    }
+                }
             }
         }
+
         return frequency;
     }
 
@@ -136,18 +153,32 @@ public class ChatAnalysis {
         if (word.isEmpty()) throw new IllegalArgumentException("Word is empty");
         if (chat.isEmpty()) throw new IllegalArgumentException("Chat is empty");
 
-        return getParticipants().stream()
+        return chat.keySet().stream()
                 .map(participant -> getSentenceByWord(word, participant))
                 .flatMap(ArrayList::stream)
                 .collect(Collectors.toCollection(ArrayList::new));
     }
 
     public ArrayList<Message> getSentenceByWord(String word, String participant) {
-        if (word.isEmpty()) throw new IllegalArgumentException("Word is empty");
-        if (chat.isEmpty()) throw new IllegalArgumentException("Chat is empty");
+        if (word == null || word.isEmpty()) throw new IllegalArgumentException("Word is empty or null");
+        if (participant == null || participant.isEmpty()) throw new IllegalArgumentException("Participant is empty or null");
+        if (chat == null || chat.isEmpty()) throw new IllegalArgumentException("Chat is empty or not initialized");
 
-        return chat.stream()
-                .filter(message -> message.getContent().toLowerCase().contains(word.toLowerCase()) && message.getSender().equalsIgnoreCase(participant))
+        // Normalize the word for case-insensitive comparison
+        String lowerCaseWord = word.toLowerCase(Locale.ROOT);
+
+        // Check if the participant exists
+        if (!chat.containsKey(participant)) {
+            System.out.println("Participant \"" + participant + "\" not found");
+            return new ArrayList<>();
+        }
+
+        List<Message> messages = chat.get(participant);
+
+        // Filter messages containing the word and return as ArrayList
+        return messages.stream()
+                .filter(message -> message.getContent() != null &&
+                        message.getContent().toLowerCase(Locale.ROOT).contains(lowerCaseWord))
                 .collect(Collectors.toCollection(ArrayList::new));
     }
 
@@ -173,19 +204,27 @@ public class ChatAnalysis {
     }
 
     public Set<String> getParticipants() {
-        return chat.stream()
-                .map(Message::getSender)
-                .collect(Collectors.toSet());
+        return chat.keySet();
     }
 
     public Long getMessagesCount() {
-        return (long) chat.size();
+        return (long) chat.values().stream().mapToInt(List::size).sum();
     }
 
     public Long getAmountOfMessagesPerParticipant(String participant) {
-        return chat.stream()
-                .filter(message -> message.getSender().equalsIgnoreCase(participant))
-                .count();
+        if (participant == null || participant.trim().isEmpty()) throw new IllegalArgumentException("Participant is empty or null");
+        if (chat == null || chat.isEmpty()) throw new IllegalArgumentException("Chat is empty or not initialized");
+
+        return (long) chat.get(participant).size();
+    }
+
+    public String getMostActiveUser() {
+        if (chat.isEmpty()) throw new IllegalArgumentException("Chat is empty");
+
+        return chat.entrySet().stream()
+                .max(Comparator.comparingInt(entry -> entry.getValue().size()))
+                .map(Map.Entry::getKey)
+                .orElse("No messages found");
     }
 
     private List<String> extractWords(String text) {
@@ -221,16 +260,17 @@ public class ChatAnalysis {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("Chat Analysis:\n----------------\n")
-                .append("Total amount of Messages: ")
-                .append(getMessagesCount()).append("\n")
-                .append("Participants: ")
-                .append(getParticipants()).append("\n")
-                .append("Amount of messages per participant:\n")
-                .append(getParticipants()
-                        .stream()
-                        .map(participant -> "\t- " +  participant + ": " + getAmountOfMessagesPerParticipant(participant)).collect(Collectors.joining("\n"))
-                ).append("\n");
+        sb.append("Chat Analysis:\n")
+                .append("----------------\n")
+                .append("Total Messages: ").append(getMessagesCount()).append("\n")
+                .append("Participants: ").append(String.join(", ", getParticipants())).append("\n")
+                .append("Messages per Participant:\n");
+
+        getParticipants().forEach(participant ->
+                sb.append("\t- ").append(participant).append(": ")
+                        .append(getAmountOfMessagesPerParticipant(participant)).append("\n")
+        );
+
         return sb.toString();
     }
 }
