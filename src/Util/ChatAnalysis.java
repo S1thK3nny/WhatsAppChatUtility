@@ -32,6 +32,10 @@ public class ChatAnalysis {
             String lastSender = null;
             while ((line = reader.readLine()) != null) {
                 String[] parts = line.trim().split("-");
+
+                // Skip empty lines
+                if (parts.length < 1) continue;
+
                 // If the line starts with a date, it's a new message
                 if (parts[0].matches("^\\d{2}\\.\\d{2}\\.\\d{2}, \\d{2}:\\d{2}.*")) {
                     String[] senderAndMessage = parts[1].split(": ", 2); // Only split the first colon to have <sender>: <message>
@@ -218,6 +222,14 @@ public class ChatAnalysis {
         return (long) chat.get(participant).size();
     }
 
+    public ArrayList<Message> getMessagesByParticipant(String participant) {
+        if (participant == null || participant.trim().isEmpty()) throw new IllegalArgumentException("Participant is empty or null");
+        if (chat == null || chat.isEmpty()) throw new IllegalArgumentException("Chat is empty or not initialized");
+        if (!chat.containsKey(participant)) throw new IllegalArgumentException("Participant not found");
+
+        return new ArrayList<>(chat.get(participant));
+    }
+
     public String getMostActiveUser() {
         if (chat.isEmpty()) throw new IllegalArgumentException("Chat is empty");
 
@@ -262,13 +274,21 @@ public class ChatAnalysis {
         StringBuilder sb = new StringBuilder();
         sb.append("Chat Analysis:\n")
                 .append("----------------\n")
-                .append("Total Messages: ").append(getMessagesCount()).append("\n")
-                .append("Participants: ").append(String.join(", ", getParticipants())).append("\n")
-                .append("Messages per Participant:\n");
+                .append("Total Messages: ").append(getMessagesCount()).append("\n");
 
-        getParticipants().forEach(participant ->
+        // Get all participants and sort them by their message count in descending order
+        List<String> sortedParticipants = new ArrayList<>(getParticipants());
+        sortedParticipants.sort((p1, p2) ->
+                Integer.compare(getMessagesByParticipant(p2).size(), getMessagesByParticipant(p1).size()));
+
+        sb.append("Participants (sorted by message count): ").append(
+                String.join(", ", sortedParticipants)).append("\n");
+
+        sb.append("Messages per Participant:\n");
+
+        sortedParticipants.forEach(participant ->
                 sb.append("\t- ").append(participant).append(": ")
-                        .append(getAmountOfMessagesPerParticipant(participant)).append("\n")
+                        .append(getMessagesByParticipant(participant).size()).append("\n")
         );
 
         return sb.toString();
