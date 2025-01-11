@@ -14,8 +14,12 @@ import java.util.stream.Collectors;
 import DataStructures.Message;
 
 public class ChatAnalysis {
-    // private final ArrayList<Message> chat;
     private final HashMap<String, List<Message>> chat;
+
+    //================================================================================
+    // Initialize Chat
+    //================================================================================
+    // region Initialize Chat
 
     public ChatAnalysis(String path) {
         this.chat = readChat(path);
@@ -68,47 +72,12 @@ public class ChatAnalysis {
 
         return messages;
     }
+    //endregion
 
-    // Prints the top <amount> most used words per person
-    public void wordFrequency(int amount) {
-        if (amount < 1) throw new IllegalArgumentException("Amount must be greater than 0");
-        if (chat == null || chat.isEmpty()) throw new IllegalArgumentException("Chat is empty or not initialized");
-        if (amount > getMessagesCount()) throw new IllegalArgumentException("Amount is greater than the number of messages");
-
-        // Map: Participant -> (Word -> Frequency)
-        Map<String, Map<String, Integer>> wordFrequencyMap = new HashMap<>();
-
-        for (Map.Entry<String, List<Message>> entry : chat.entrySet()) {
-            String sender = entry.getKey();
-            List<Message> messages = entry.getValue();
-
-            if (sender == null || sender.trim().isEmpty() || messages == null) continue; // Skip invalid entries
-
-            // Initialize the word frequency map for the sender
-            Map<String, Integer> frequencyMap = wordFrequencyMap.computeIfAbsent(sender, k -> new HashMap<>());
-
-            // Process each message from the sender
-            for (Message message : messages) {
-                if (message == null || message.getContent() == null) continue;
-
-                // Extract words and update frequency
-                List<String> words = extractWords(message.getContent());
-                for (String word : words) {
-                    frequencyMap.merge(word, 1, Integer::sum);
-                }
-            }
-        }
-
-        // Display top 'amount' words for each participant
-        wordFrequencyMap.forEach((sender, freqMap) -> {
-            System.out.println("\nTop " + amount + " words for " + sender + ":");
-            freqMap.entrySet().stream()
-                    .sorted(Map.Entry.<String, Integer>comparingByValue(Comparator.reverseOrder())
-                            .thenComparing(Map.Entry.comparingByKey()))
-                    .limit(amount)
-                    .forEach(entry -> System.out.println(entry.getKey() + ": " + entry.getValue()));
-        });
-    }
+    //================================================================================
+    // Get-Methods
+    //================================================================================
+    // region Get-Methods
 
     public Map<String, Integer> getWordFrequency(String word) {
         if (chat.isEmpty()) throw new IllegalArgumentException("Chat ist leer");
@@ -238,6 +207,60 @@ public class ChatAnalysis {
                 .map(Map.Entry::getKey)
                 .orElse("No messages found");
     }
+    //endregion
+
+    //================================================================================
+    // Print-Methods
+    //================================================================================
+    // region Print-Methods
+
+    // Prints the top <amount> most used words per person
+    public void printTopAmountUsedWords(int amount) {
+        if (amount < 1) throw new IllegalArgumentException("Amount must be greater than 0");
+        if (chat == null || chat.isEmpty()) throw new IllegalArgumentException("Chat is empty or not initialized");
+        if (amount > getMessagesCount()) throw new IllegalArgumentException("Amount is greater than the number of messages");
+
+        chat.keySet().forEach(participant -> printTopAmountUsedWords(amount, participant));
+    }
+
+    public void printTopAmountUsedWords(int amount, String participant) {
+        if (amount < 1) throw new IllegalArgumentException("Amount must be greater than 0");
+        if (chat == null || chat.isEmpty()) throw new IllegalArgumentException("Chat is empty or not initialized");
+        if (participant == null || participant.trim().isEmpty()) throw new IllegalArgumentException("Participant is empty or null");
+        if (!chat.containsKey(participant)) throw new IllegalArgumentException("Participant not found");
+
+        List<Message> messages = chat.get(participant);
+        if (messages == null || messages.isEmpty()) throw new IllegalArgumentException("No messages found for participant");
+        if (amount > messages.size()) amount = messages.size();
+
+        // Map: Word -> Frequency
+        Map<String, Integer> frequencyMap = new HashMap<>();
+
+        // Process each message from the participant
+        for (Message message : messages) {
+            if (message == null || message.getContent() == null) continue;
+
+            // Extract words and update frequency
+            List<String> words = extractWords(message.getContent());
+            for (String word : words) {
+                frequencyMap.merge(word, 1, Integer::sum);
+            }
+        }
+
+        // Display top 'amount' words for the participant
+        System.out.println("\nTop " + amount + " words for " + participant + ":");
+        frequencyMap.entrySet().stream()
+                .sorted(Map.Entry.<String, Integer>comparingByValue(Comparator.reverseOrder())
+                        .thenComparing(Map.Entry.comparingByKey()))
+                .limit(amount)
+                .forEach(entry -> System.out.println(entry.getKey() + ": " + entry.getValue()));
+    }
+    //endregion
+
+    //================================================================================
+    // Utility functions
+    //================================================================================
+    // region Utility functions
 
     private List<String> extractWords(String text) {
         List<String> words = new ArrayList<>();
@@ -293,4 +316,5 @@ public class ChatAnalysis {
 
         return sb.toString();
     }
+    //endregion
 }
