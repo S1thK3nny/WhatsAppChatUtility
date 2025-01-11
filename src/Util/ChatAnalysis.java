@@ -22,6 +22,10 @@ public class ChatAnalysis {
         this.chat = readChat(path);
     }
 
+    public ChatAnalysis(ChatQuery query) {
+        this.chat = readChat(query);
+    }
+
     public HashMap<String, List<Message>> readChat(String path) {
         if (path == null || path.trim().isEmpty()) throw new IllegalArgumentException("Path is empty or null");
 
@@ -66,6 +70,18 @@ public class ChatAnalysis {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+
+        return messages;
+    }
+
+    public HashMap<String, List<Message>> readChat(ChatQuery query) {
+        if (query == null) throw new IllegalArgumentException("Query is null");
+
+        HashMap<String, List<Message>> messages = new HashMap<>();
+        query.toList().forEach(message -> {
+            messages.putIfAbsent(message.getSender(), new ArrayList<>());
+            messages.get(message.getSender()).add(message);
+        });
 
         return messages;
     }
