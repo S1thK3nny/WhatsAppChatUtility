@@ -229,7 +229,8 @@ public class ChatAnalysis {
         return chat.values().stream()
                 .flatMap(List::stream)
                 .filter(message -> message.getTimestamp().isAfter(parseDateTime(start)) && message.getTimestamp().isBefore(parseDateTime(end)))
-                .sorted(Comparator.comparing(Message::getTimestamp)) // Sort by timestamp
+                .sorted(Comparator.comparing(Message::getTimestamp)
+                        .thenComparing(Message::getSender)) // Sort by timestamp
                 .collect(Collectors.toCollection(ArrayList::new));
     }
 
@@ -260,7 +261,8 @@ public class ChatAnalysis {
         List<Message> messages = chat.get(participant);
         if (messages == null || messages.isEmpty()) return 0;
 
-        messages.sort(Comparator.comparing(Message::getTimestamp));
+        messages.sort(Comparator.comparing(Message::getTimestamp)
+                        .thenComparing(Message::getSender));
 
         // Get the first and last message timestamps
         LocalDateTime firstMessageTime = messages.get(0).getTimestamp();

@@ -34,6 +34,10 @@ public class Message implements Comparable<Message> {
 
     @Override
     public int compareTo(Message other) {
-        return this.timestamp.compareTo(other.timestamp);
+        int timeComparison = this.timestamp.compareTo(other.timestamp);
+        if (timeComparison != 0) {
+            return timeComparison; // Sort by timestamp
+        }
+        return this.sender.compareTo(other.sender); // Sort by sender if timestamps are equal
     }
 }

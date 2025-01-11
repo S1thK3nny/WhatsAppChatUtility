@@ -117,7 +117,8 @@ public class ChatQuery {
     // Collect messages to a list
     public List<Message> toList() {
         return messages.stream()
-                .sorted(Comparator.comparing(Message::getTimestamp))
+                .sorted(Comparator.comparing(Message::getTimestamp)
+                        .thenComparing(Message::getSender))
                 .collect(Collectors.toList());
     }
 
