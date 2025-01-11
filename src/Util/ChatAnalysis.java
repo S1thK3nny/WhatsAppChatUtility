@@ -3,6 +3,8 @@ package Util;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -239,6 +241,36 @@ public class ChatAnalysis {
                 .max(Comparator.comparingInt(entry -> entry.getValue().size()))
                 .map(Map.Entry::getKey)
                 .orElse("No messages found");
+    }
+
+    public HashMap<String, Double> getAverageMessagePerDay() {
+        if (chat.isEmpty()) throw new IllegalArgumentException("Chat is empty");
+
+        HashMap<String, Double> averageMessagesPerDay = new HashMap<>();
+        chat.keySet().forEach(participant -> averageMessagesPerDay.put(participant, getAverageMessagePerDay(participant)));
+
+        return averageMessagesPerDay;
+    }
+
+    public double getAverageMessagePerDay(String participant) {
+        if (participant == null || participant.trim().isEmpty()) throw new IllegalArgumentException("Participant is empty or null");
+        if (chat == null || chat.isEmpty()) throw new IllegalArgumentException("Chat is empty or not initialized");
+        if (!chat.containsKey(participant)) throw new IllegalArgumentException("Participant not found");
+
+        List<Message> messages = chat.get(participant);
+        if (messages == null || messages.isEmpty()) throw new IllegalArgumentException("No messages found for participant");
+
+        messages.sort(Comparator.comparing(Message::getTimestamp));
+
+        // Get the first and last message timestamps
+        LocalDateTime firstMessageTime = messages.get(0).getTimestamp();
+        LocalDateTime lastMessageTime = messages.get(messages.size() - 1).getTimestamp();
+
+        // Calculate the number of days between the first and last message (inclusive)
+        long daysBetween = Duration.between(firstMessageTime, lastMessageTime).toDays() + 1;
+
+        // Return the average messages per day
+        return (double) messages.size() / daysBetween;
     }
     //endregion
 

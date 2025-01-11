@@ -121,4 +121,12 @@ public class ChatQuery {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        for (Message message : messages) {
+            sb.append(message).append("\n");
+        }
+        return sb.toString();
+    }
 }
