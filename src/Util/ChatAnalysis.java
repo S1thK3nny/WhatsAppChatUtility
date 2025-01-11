@@ -244,7 +244,7 @@ public class ChatAnalysis {
     }
 
     public HashMap<String, Double> getAverageMessagePerDay() {
-        if (chat.isEmpty()) throw new IllegalArgumentException("Chat is empty");
+        if (chat.isEmpty()) return new HashMap<>();
 
         HashMap<String, Double> averageMessagesPerDay = new HashMap<>();
         chat.keySet().forEach(participant -> averageMessagesPerDay.put(participant, getAverageMessagePerDay(participant)));
@@ -254,11 +254,11 @@ public class ChatAnalysis {
 
     public double getAverageMessagePerDay(String participant) {
         if (participant == null || participant.trim().isEmpty()) throw new IllegalArgumentException("Participant is empty or null");
-        if (chat == null || chat.isEmpty()) throw new IllegalArgumentException("Chat is empty or not initialized");
+        if (chat == null || chat.isEmpty()) return 0;
         if (!chat.containsKey(participant)) throw new IllegalArgumentException("Participant not found");
 
         List<Message> messages = chat.get(participant);
-        if (messages == null || messages.isEmpty()) throw new IllegalArgumentException("No messages found for participant");
+        if (messages == null || messages.isEmpty()) return 0;
 
         messages.sort(Comparator.comparing(Message::getTimestamp));
 

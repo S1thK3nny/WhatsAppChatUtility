@@ -121,6 +121,10 @@ public class ChatQuery {
                 .collect(Collectors.toList());
     }
 
+    public ChatAnalysis toChatAnalysis() {
+        return new ChatAnalysis(this);
+    }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
