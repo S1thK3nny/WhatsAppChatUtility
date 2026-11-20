@@ -179,7 +179,6 @@ public class ChatAnalysis {
                 .collect(Collectors.toCollection(ArrayList::new));
     }
 
-    // Broken method
     public ArrayList<Message> getMessagesByExactWord(String word) {
         if (word.isEmpty()) throw new IllegalArgumentException("Word is empty");
         if (chat.isEmpty()) throw new IllegalArgumentException("Chat is empty");
@@ -190,13 +189,12 @@ public class ChatAnalysis {
                 .collect(Collectors.toCollection(ArrayList::new));
     }
 
-    // Broken method
     public ArrayList<Message> getMessagesByExactWord(String word, String participant) {
         if (word.isEmpty()) throw new IllegalArgumentException("Word is empty");
         if (chat.isEmpty()) throw new IllegalArgumentException("Chat is empty");
 
         return getMessagesByWord(word, participant).stream()
-                .filter(message -> Objects.equals(extractWords(message.getContent()), word.toLowerCase()))
+                .filter(message -> extractWords(message.getContent()).contains(word.toLowerCase(Locale.ROOT)))
                 .collect(Collectors.toCollection(ArrayList::new));
     }
 
